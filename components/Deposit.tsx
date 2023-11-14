@@ -7,7 +7,7 @@ import {
     NumberInputField,
 } from "@chakra-ui/react"
 import { FC, useState } from "react"
-import * as Web3 from "@solana/web3.js"
+import * as web3 from "@solana/web3.js"
 import { useConnection, useWallet } from "@solana/wallet-adapter-react"
 import {
     kryptMint,
@@ -39,6 +39,56 @@ export const DepositSingleTokenType: FC = (props: {
         if (!publicKey) {
             alert("Please connect your wallet!")
             return
+        }
+
+        const kryptATA = await token.getAssociatedTokenAddress(kryptMint, publicKey)
+        const scroogeATA = await token.getAssociatedTokenAddress(ScroogeCoinMint, publicKey)
+        const tokenAccountPool = await token.getAssociatedTokenAddress(poolMint, publicKey)
+
+        const poolMintInfo = await token.getMint(connection, poolMint)
+        console.log(`pool mint decimals = ${poolMintInfo.decimals}`)
+
+        const transaction = new web3.Transaction()
+
+        let account = await connection.getAccountInfo(tokenAccountPool)
+
+        if (account == null) {
+            const createATAInstruction = token.createAssociatedTokenAccountInstruction(
+                publicKey,
+                tokenAccountPool,
+                publicKey,
+                poolMint
+            )
+            transaction.add(createATAInstruction)
+        }
+
+        const instruction = TokenSwap.depositAllTokenTypesInstruction(
+            tokenSwapStateAccount,
+            swapAuthority,
+            publicKey,
+            kryptATA,
+            scroogeATA,
+            poolKryptAccount,
+            poolScroogeAccount,
+            poolMint,
+            tokenAccountPool,
+            TOKEN_SWAP_PROGRAM_ID,
+            token.TOKEN_PROGRAM_ID,
+            poolTokenAmount * 10 ** poolMintInfo.decimals,
+            100e9,
+            100e9,
+        )
+
+        transaction.add(instruction)
+
+        try {
+            const txid = await sendTransaction(transaction, connection)
+            const txString = `Transaction submitted {https://explorer.solana.com/tx/${txid}?cluster=devnet}`
+            alert(txString)
+            console.log(txString)
+        } catch (error) {
+            alert(JSON.stringify(error))
+            console.log(JSON.stringify(error))
         }
     }
 
