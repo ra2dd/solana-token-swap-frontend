@@ -20,6 +20,7 @@ import {
 } from "../utils/constants"
 import { TokenSwap, TOKEN_SWAP_PROGRAM_ID } from "@solana/spl-token-swap"
 import * as token from "@solana/spl-token"
+import { getAssociatedAccounts } from "../utils/tokenSwap"
 
 export const DepositSingleTokenType: FC = (props: {
     onInputChange?: (val: number) => void
@@ -41,26 +42,13 @@ export const DepositSingleTokenType: FC = (props: {
             return
         }
 
-        const kryptATA = await token.getAssociatedTokenAddress(kryptMint, publicKey)
-        const scroogeATA = await token.getAssociatedTokenAddress(ScroogeCoinMint, publicKey)
-        const tokenAccountPool = await token.getAssociatedTokenAddress(poolMint, publicKey)
-
-        const poolMintInfo = await token.getMint(connection, poolMint)
-        console.log(`pool mint decimals = ${poolMintInfo.decimals}`)
-
-        const transaction = new web3.Transaction()
-
-        let account = await connection.getAccountInfo(tokenAccountPool)
-
-        if (account == null) {
-            const createATAInstruction = token.createAssociatedTokenAccountInstruction(
-                publicKey,
-                tokenAccountPool,
-                publicKey,
-                poolMint
-            )
-            transaction.add(createATAInstruction)
-        }
+        const [
+            kryptATA, 
+            scroogeATA, 
+            tokenAccountPool, 
+            poolMintInfo, 
+            transaction
+        ] = await getAssociatedAccounts(publicKey, connection)
 
         const instruction = TokenSwap.depositAllTokenTypesInstruction(
             tokenSwapStateAccount,

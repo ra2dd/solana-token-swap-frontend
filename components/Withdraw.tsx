@@ -22,6 +22,7 @@ import {
 import { TokenSwap, TOKEN_SWAP_PROGRAM_ID } from "@solana/spl-token-swap"
 import * as token from "@solana/spl-token"
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token"
+import { getAssociatedAccounts } from "../utils/tokenSwap"
 
 export const WithdrawSingleTokenType: FC = (props: {
     onInputChange?: (val: number) => void
@@ -41,6 +42,43 @@ export const WithdrawSingleTokenType: FC = (props: {
             alert("Please connect your wallet!")
             return
         }
+
+        const [
+            kryptATA, 
+            scroogeATA, 
+            tokenAccountPool, 
+            poolMintInfo, 
+            transaction
+        ] = await getAssociatedAccounts(publicKey, connection)
+
+        const instruction = TokenSwap.withdrawAllTokenTypesInstruction(
+            tokenSwapStateAccount,
+            swapAuthority,
+            publicKey,
+            poolMint,
+            feeAccount,
+            tokenAccountPool,
+            poolKryptAccount,
+            poolScroogeAccount,
+            kryptATA,
+            scroogeATA,
+            TOKEN_SWAP_PROGRAM_ID,
+            TOKEN_PROGRAM_ID,
+            poolTokenAmount * 10 ** poolMintInfo.decimals,
+            0,
+            0,
+        )
+
+        transaction.add(instruction)
+        try {
+            const txid = await sendTransaction(transaction, connection)
+            const txString = `Transaction submitted {https://explorer.solana.com/tx/${txid}?cluster=devnet}`
+            alert(txString)
+            console.log(txString)
+        } catch (error) {
+            alert(JSON.stringify(error))
+            console.log(JSON.stringify(error))
+        }
     }
 
     return (
@@ -57,7 +95,7 @@ export const WithdrawSingleTokenType: FC = (props: {
                         LP-Token Withdrawal Amount
                     </FormLabel>
                     <NumberInput
-                        max={1000}
+                        max={10000}
                         min={1}
                         onChange={(valueString) =>
                             setAmount(parseInt(valueString))
