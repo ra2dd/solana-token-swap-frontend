@@ -4,7 +4,12 @@ import {
     kryptMint,
     ScroogeCoinMint,
     poolMint,
+    tokenSwapStateAccount,
+    swapAuthority,
+    feeAccount,
 } from "../utils/constants"
+import { TokenSwap, TOKEN_SWAP_PROGRAM_ID } from "@solana/spl-token-swap"
+import { TOKEN_PROGRAM_ID } from "@solana/spl-token"
 
 export async function getAssociatedAccounts(publicKey: web3.PublicKey, connection: web3.Connection) 
 : Promise<[
@@ -34,4 +39,32 @@ export async function getAssociatedAccounts(publicKey: web3.PublicKey, connectio
         transaction.add(createATAInstruction)
     }
     return [kryptATA, scroogeATA, tokenAccountPool, poolMintInfo, transaction]
+}
+
+export function getSwapInstruction(
+    userPublicKey: web3.PublicKey,
+    sourceTokenATA: web3.PublicKey, 
+    sourceTokenPoolATA: web3.PublicKey, 
+    destinationTokenPoolATA: web3.PublicKey, 
+    destinationTokenATA: web3.PublicKey, 
+    sourceTokenMintInfo: token.Mint,
+    sourceTokenAmount: number
+) {
+    const instruction = TokenSwap.swapInstruction(
+        tokenSwapStateAccount,
+        swapAuthority,
+        userPublicKey,
+        sourceTokenATA,
+        sourceTokenPoolATA,
+        destinationTokenPoolATA,
+        destinationTokenATA,
+        poolMint,
+        feeAccount,
+        null,
+        TOKEN_SWAP_PROGRAM_ID,
+        TOKEN_PROGRAM_ID,
+        sourceTokenAmount * 10 ** sourceTokenMintInfo.decimals,
+        0
+    )
+    return instruction
 }

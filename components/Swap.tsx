@@ -23,6 +23,7 @@ import {
 import { TokenSwap, TOKEN_SWAP_PROGRAM_ID } from "@solana/spl-token-swap"
 import * as token from "@solana/spl-token"
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token"
+import { getAssociatedAccounts, getSwapInstruction } from "../utils/tokenSwap"
 
 export const SwapToken: FC = () => {
     const [amount, setAmount] = useState(0)
@@ -40,6 +41,54 @@ export const SwapToken: FC = () => {
         if (!publicKey) {
             alert("Please connect your wallet!")
             return
+        }
+
+        const [
+            kryptATA,
+            scroogeATA,
+            tokenAccountPool,
+            poolMintInfo,
+            transaction
+        ] = await getAssociatedAccounts(publicKey, connection)
+        
+        const kryptMintInfo = await token.getMint(connection, kryptMint);
+        const scroogeMintInfo = await token.getMint(connection, ScroogeCoinMint)
+
+        let swapInstruction = null
+        if (mint == 'kryptToScrooge') {
+            swapInstruction = getSwapInstruction(
+                publicKey,
+                kryptATA,
+                poolKryptAccount,
+                poolScroogeAccount,
+                scroogeATA,
+                scroogeMintInfo,
+                amount,
+            )
+        } else if (mint == 'scroogeToKrypt') {
+            swapInstruction = getSwapInstruction(
+                publicKey,
+                scroogeATA,
+                poolScroogeAccount,
+                poolKryptAccount,
+                kryptATA,
+                scroogeMintInfo,
+                amount,
+            )
+        }
+
+        if (swapInstruction == null) {
+            return alert('Transaction error')
+        } else {
+            transaction.add(swapInstruction)
+            try {
+                const txid = await sendTransaction(transaction, connection)
+                const txString = `Transaction submitted {https://explorer.solana.com/tx/${txid}?cluster=devnet}`
+                alert('Transaction submitted, check link in console.')
+                console.log(txString)
+            } catch (error) {
+                alert(JSON.stringify(error))
+            }
         }
     }
 
@@ -77,14 +126,14 @@ export const SwapToken: FC = () => {
                         >
                             <option
                                 style={{ color: "#282c34" }}
-                                value="option1"
+                                value="kryptToScrooge"
                             >
                                 {" "}
                                 Krypt{" "}
                             </option>
                             <option
                                 style={{ color: "#282c34" }}
-                                value="option2"
+                                value="scroogeToKrypt"
                             >
                                 {" "}
                                 Scrooge{" "}
